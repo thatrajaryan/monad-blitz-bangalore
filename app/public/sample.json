@@ -1,0 +1,6 @@
+{
+    "1": "Create a Policy for Gym membership of amount 10 whose parent will be 0 and frequency will be capped at 5. Do not add any recipient now, and keep the chiildren empty. It is to be kept strict.",
+    "2": "Add 0xd295466786b5dc70Ebf465715624Ee95b38858a7 as a recipient for Policy 1.",
+    "3": "Send amount 20 to 0xd295466786b5dc70Ebf465715624Ee95b38858a7 for policy 2.",
+    "4": "Send amount 20000 to 0xd295466786b5dc70Ebf465715624Ee95b38858a7 for policy 3."
+}
