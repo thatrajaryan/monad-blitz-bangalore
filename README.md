@@ -1,33 +1,300 @@
-# Monad Blitz Bangalore Submission Process
+# AgentVault
 
-1. Visit the `monad-blitz-bangalore` repo (link here) and fork it.
+Policy-Based Smart Wallet for AI Agents on Monad.
 
-![image](https://github.com/user-attachments/assets/ab46b2ea-ee0f-4237-87ef-c33bb1a94749)
+AgentVault allows users to define hierarchical spending policies and delegate spending authority to AI agents while enforcing constraints on-chain.
 
-2. Give it your project name, a one-liner description, make sure you are forking `main` branch and click `Create Fork`.
+---
 
-![image](https://github.com/user-attachments/assets/ffdebab7-c340-4e14-bd3c-36905f1016a3)
+## Problem
 
-3. In your fork you can make all the changes you want, add code of your project, create branches, add information to `README.md`, you can change anything and everything.
+As AI agents become capable of making autonomous financial decisions, giving them direct access to a wallet creates significant risk.
 
-4. Once you are done with your project and ready for submission, create a pull request.
+A compromised or malfunctioning agent can:
 
-![image](https://github.com/user-attachments/assets/58aa7140-55db-49db-9361-332449dbe116)
+* Spend unlimited funds
+* Transfer money to arbitrary recipients
+* Ignore user-defined budgets
 
-![image](https://github.com/user-attachments/assets/5c8c61b1-23fd-4177-b06e-e8fca3a61ad4)
+AgentVault introduces a policy layer between the agent and the funds.
 
-5. Make sure you are create a pull request to the right repo `monad-developers/monad-blitz-bangalore`.
+---
 
-![image](https://github.com/user-attachments/assets/41774ebc-d64c-43de-b3be-7e46d21bcaba)
+## Solution
 
-6. Make sure you see “Able to merge”, when creating a pull request then you can click `Create Pull Request`.
+AgentVault is a smart contract wallet that stores a hierarchy of spending policies.
 
-![image](https://github.com/user-attachments/assets/b52f5e6f-9091-43af-9025-f2c61a7d1205)
+Every spending request is validated against:
 
-7. Give the pull request your project name and a description of the project (describe as much as you can about your project you can even add video demo links) then click `Create pull request`.
+* Policy allocation limits
+* Parent policy allocation limits
+* Recipient whitelists
+* Spending frequencies
 
-![image](https://github.com/user-attachments/assets/9a3cc30a-498f-4d83-9060-adb11f88eff6)
+The smart contract itself performs enforcement, meaning an AI agent cannot bypass the rules.
 
-8. Finally verify if you created your pull request correctly by checking the repo on which the pull request is created and the source and destination branch of the pull request!
+---
 
-![image](https://github.com/user-attachments/assets/b16befcd-2c29-4520-aa70-29883306e85c)
+## Example
+
+Family Budget
+
+```text
+Family Budget
+├── Education
+│   ├── Tuition
+│   └── Books
+├── Vacation
+└── Rent
+```
+
+Example:
+
+* Family Budget = 10000
+* Education = 5000
+* Tuition = 1000
+
+A request for:
+
+```text
+Tuition -> 500
+```
+
+succeeds.
+
+A request for:
+
+```text
+Tuition -> 1500
+```
+
+fails because the Tuition allocation is exceeded.
+
+---
+
+## Features
+
+### Hierarchical Policies
+
+Policies can contain child policies.
+
+```text
+Root
+ ├── Child A
+ ├── Child B
+ └── Child C
+```
+
+---
+
+### Allocation Enforcement
+
+Policies marked as strict enforce spending caps.
+
+```text
+Allocation = 1000
+
+Spend 500
+Spend 500
+
+Next spend = rejected
+```
+
+---
+
+### Recipient Whitelisting
+
+Policies can restrict transfers to approved addresses.
+
+```text
+Policy
+ └── University Wallet
+```
+
+Any transfer to a non-whitelisted address is rejected.
+
+---
+
+### Agent-Based Spending
+
+An AI agent can execute spending requests while policy validation remains fully on-chain.
+
+---
+
+## Architecture
+
+```text
+Frontend (Next.js)
+        |
+        v
+AgentVaultClient
+        |
+        v
+MetaMask
+        |
+        v
+AgentVault Smart Contract
+```
+
+No backend is required.
+
+All transactions are signed directly by the user through MetaMask.
+
+---
+
+## Smart Contract
+
+Core contract:
+
+```text
+contracts/AgentVault.sol
+```
+
+The contract stores:
+
+### PolicyNode
+
+```solidity
+struct PolicyNode {
+    string name;
+    bool strict;
+    uint256 allocation;
+    uint256 parentId;
+    uint256[] children;
+    Frequency frequency;
+    uint256 frequencyLimit;
+}
+```
+
+### PolicyUsage
+
+```solidity
+struct PolicyUsage {
+    uint256 totalDisbursed;
+    uint256 periodDisbursed;
+    uint256 lastResetTimestamp;
+}
+```
+
+---
+
+## Deployment
+
+Compile:
+
+```bash
+npx hardhat compile
+```
+
+Deploy:
+
+```bash
+npx hardhat run scripts/deploy.ts --network monadTestnet
+```
+
+Save the deployed contract address.
+
+---
+
+## Environment Variables
+
+```env
+NEXT_PUBLIC_AGENT_VAULT_ADDRESS=0x...
+```
+
+---
+
+## Frontend
+
+Start:
+
+```bash
+npm run dev
+```
+
+The UI supports:
+
+### Create Root Policy
+
+```json
+{
+  "name": "Family Budget",
+  "allocation": "10000"
+}
+```
+
+---
+
+### Create Child Policy
+
+```json
+{
+  "parentId": 0,
+  "name": "Education",
+  "allocation": "5000",
+  "strict": true,
+  "frequency": 0,
+  "frequencyLimit": "0",
+  "recipients": []
+}
+```
+
+---
+
+### Add Recipient
+
+```json
+{
+  "policyId": 1,
+  "recipient": "0x123..."
+}
+```
+
+---
+
+### Execute Spend
+
+```json
+{
+  "policyId": 1,
+  "recipient": "0x123...",
+  "amount": "500"
+}
+```
+
+---
+
+## Policy Tree Visualization
+
+The frontend reconstructs the hierarchy by:
+
+1. Fetching all policies
+2. Using `parentId`
+3. Building a tree in memory
+4. Rendering recursively
+
+Root policies are identified using:
+
+```solidity
+type(uint256).max
+```
+
+as the parent identifier.
+
+---
+
+## Tech Stack
+
+* Solidity
+* Hardhat
+* Viem
+* MetaMask
+* Next.js
+* TypeScript
+* Monad Testnet
+
+---
+
+## One-Line Pitch
+
+**"Describe how an AI agent should handle money, and AgentVault enforces those rules directly on-chain."**
